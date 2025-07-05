@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { getWeatherData } from '../../services/api';
 import { WeatherData } from '../../types';
 import { Cloud, CloudRain, CloudSnow, CloudSun, Droplets, Sun, Wind, CloudLightning } from 'lucide-react';
 import WidgetContainer from '../ui/WidgetContainer';
+import { useDashboardData } from '../../DataContext';
 
 interface WeatherWidgetProps {
   zipCode: string;
@@ -11,30 +12,23 @@ interface WeatherWidgetProps {
   onMoveTop?: () => void;
   onMoveBottom?: () => void;
   onToggleWidth?: () => void;
+  onHide?: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
 }
 
-const WeatherWidget: React.FC<WeatherWidgetProps> = ({ zipCode, width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth }) => {
-  const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchWeather = async () => {
-    try {
-      setLoading(true);
-      const data = await getWeatherData(zipCode);
-      setWeather(data);
-    } catch (error) {
-      console.error('Error fetching weather data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+const WeatherWidget: React.FC<WeatherWidgetProps> = ({ zipCode, width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
+  const { state, dispatch } = useDashboardData();
+  const weather = state.weather;
 
   useEffect(() => {
-    fetchWeather();
-    // Refresh weather data every 30 minutes
-    const interval = setInterval(fetchWeather, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [zipCode]);
+    if (!weather) {
+      getWeatherData(zipCode).then(data => {
+        dispatch({ type: 'SET_WEATHER', payload: data });
+      });
+    }
+    // Optionally, add zipCode to deps if you want to refetch on zip change
+    // eslint-disable-next-line
+  }, [weather, zipCode, dispatch]);
 
   const getWeatherIcon = (iconName: string) => {
     switch (iconName) {
@@ -55,36 +49,20 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ zipCode, width = 'half', 
     }
   };
 
-  if (loading) {
-    return (
-      <WidgetContainer
-        title="Weather"
-        width={width}
-        onRefresh={fetchWeather}
-        onMoveTop={onMoveTop}
-        onMoveBottom={onMoveBottom}
-        onToggleWidth={onToggleWidth}
-      >
-        <div className="flex items-center justify-center h-full min-h-[120px]">
-          <div className="animate-pulse h-48 w-full bg-gray-200 dark:bg-gray-700 rounded"></div>
-        </div>
-      </WidgetContainer>
-    );
-  }
-
   if (!weather) {
     return (
       <WidgetContainer
         title="Weather"
         width={width}
-        onRefresh={fetchWeather}
+        onRefresh={onRefresh}
         onMoveTop={onMoveTop}
         onMoveBottom={onMoveBottom}
         onToggleWidth={onToggleWidth}
+        onHide={onHide}
+        dragHandleProps={dragHandleProps}
       >
         <div className="flex flex-col items-center justify-center h-full min-h-[120px]">
-          <p className="text-red-500">Weather API Error</p>
-          <p className="text-sm text-gray-500 mt-2">Check console for details</p>
+          <p className="text-blue-500">Loading weather...</p>
         </div>
       </WidgetContainer>
     );
@@ -92,12 +70,14 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ zipCode, width = 'half', 
 
   return (
     <WidgetContainer
-      title={`Weather - ${zipCode}`}
+      title="Weather"
       width={width}
-      onRefresh={fetchWeather}
+      onRefresh={onRefresh}
       onMoveTop={onMoveTop}
       onMoveBottom={onMoveBottom}
       onToggleWidth={onToggleWidth}
+      onHide={onHide}
+      dragHandleProps={dragHandleProps}
     >
       <div className="p-2">
         <div className="flex items-center justify-between mb-4">
@@ -120,7 +100,23 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ zipCode, width = 'half', 
         </div>
         <div className="mt-6">
           <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">7-Day Forecast</h3>
-          <div className="flex space-x-2 overflow-x-auto pb-2">
+          {/* Responsive forecast: grid on md+, scroll on mobile */}
+          <div className="hidden md:grid grid-cols-7 gap-2">
+            {weather.forecast.map((day, index) => (
+              <div
+                key={index}
+                className="flex flex-col items-center p-3 rounded-lg bg-gray-50 dark:bg-gray-800 min-w-0"
+              >
+                <p className="text-sm font-semibold mb-1">{day.fullDay || day.day}</p>
+                {getWeatherIcon(day.icon)}
+                <div className="mt-1 text-center">
+                  <p className="text-base font-bold">{day.high}°</p>
+                  <p className="text-xs text-gray-500">{day.low}°</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex md:hidden space-x-2 overflow-x-auto pb-2">
             {weather.forecast.map((day, index) => (
               <div
                 key={index}

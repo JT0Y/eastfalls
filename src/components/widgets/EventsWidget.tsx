@@ -11,9 +11,11 @@ interface EventsWidgetProps {
   onMoveTop?: () => void;
   onMoveBottom?: () => void;
   onToggleWidth?: () => void;
+  onHide?: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
 }
 
-const EventsWidget: React.FC<EventsWidgetProps> = ({ zipCode, width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth }) => {
+const EventsWidget: React.FC<EventsWidgetProps> = ({ zipCode, width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -74,6 +76,8 @@ const EventsWidget: React.FC<EventsWidgetProps> = ({ zipCode, width = 'half', on
         onMoveTop={onMoveTop}
         onMoveBottom={onMoveBottom}
         onToggleWidth={onToggleWidth}
+        onHide={onHide}
+        dragHandleProps={dragHandleProps}
       >
         <div className="animate-pulse p-4 space-y-4">
           {[1, 2, 3].map((i) => (
@@ -92,6 +96,8 @@ const EventsWidget: React.FC<EventsWidgetProps> = ({ zipCode, width = 'half', on
       onMoveTop={onMoveTop}
       onMoveBottom={onMoveBottom}
       onToggleWidth={onToggleWidth}
+      onHide={onHide}
+      dragHandleProps={dragHandleProps}
     >
       <div className="p-4">
         {/* Category filters */}

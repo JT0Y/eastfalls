@@ -1,5 +1,5 @@
 import React from 'react';
-import { RotateCcw, ArrowUp, ArrowDown, Maximize2, Minimize2, X } from 'lucide-react';
+import { RotateCcw, ArrowUp, ArrowDown, Maximize2, Minimize2, X, GripVertical } from 'lucide-react';
 
 interface WidgetContainerProps {
   title: string;
@@ -11,6 +11,7 @@ interface WidgetContainerProps {
   onHide?: () => void;
   children: React.ReactNode;
   className?: string;
+  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
 }
 
 const WidgetContainer: React.FC<WidgetContainerProps> = ({
@@ -23,6 +24,7 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
   onHide,
   children,
   className = '',
+  dragHandleProps,
 }) => {
   return (
     <div
@@ -32,6 +34,10 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold truncate mr-2" title={title}>{title}</h2>
         <div className="flex items-center gap-1">
+          {/* Drag handle for dnd-kit */}
+          <span className="cursor-grab active:cursor-grabbing p-1" data-dnd-handle title="Drag to reorder" {...dragHandleProps}>
+            <GripVertical className="h-4 w-4 text-gray-400" />
+          </span>
           {onRefresh && (
             <button onClick={onRefresh} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800" title="Refresh">
               <RotateCcw className="h-4 w-4" />

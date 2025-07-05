@@ -11,9 +11,11 @@ interface TrafficWidgetProps {
   onMoveTop?: () => void;
   onMoveBottom?: () => void;
   onToggleWidth?: () => void;
+  onHide?: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
 }
 
-const TrafficWidget: React.FC<TrafficWidgetProps> = ({ zipCode, width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth }) => {
+const TrafficWidget: React.FC<TrafficWidgetProps> = ({ zipCode, width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
   const [traffic, setTraffic] = useState<TrafficData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -69,6 +71,8 @@ const TrafficWidget: React.FC<TrafficWidgetProps> = ({ zipCode, width = 'half', 
         onMoveTop={onMoveTop}
         onMoveBottom={onMoveBottom}
         onToggleWidth={onToggleWidth}
+        onHide={onHide}
+        dragHandleProps={dragHandleProps}
       >
         <div className="flex items-center justify-center h-full min-h-[120px]">
           <div className="animate-pulse h-48 w-full bg-gray-200 dark:bg-gray-700 rounded"></div>
@@ -86,6 +90,8 @@ const TrafficWidget: React.FC<TrafficWidgetProps> = ({ zipCode, width = 'half', 
         onMoveTop={onMoveTop}
         onMoveBottom={onMoveBottom}
         onToggleWidth={onToggleWidth}
+        onHide={onHide}
+        dragHandleProps={dragHandleProps}
       >
         <div className="flex flex-col items-center justify-center h-full min-h-[120px]">
           <p>Unable to load traffic data</p>
@@ -102,6 +108,8 @@ const TrafficWidget: React.FC<TrafficWidgetProps> = ({ zipCode, width = 'half', 
       onMoveTop={onMoveTop}
       onMoveBottom={onMoveBottom}
       onToggleWidth={onToggleWidth}
+      onHide={onHide}
+      dragHandleProps={dragHandleProps}
     >
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">

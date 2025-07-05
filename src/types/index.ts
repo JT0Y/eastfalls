@@ -12,6 +12,7 @@ export interface WeatherData {
 
 export interface DayForecast {
   day: string;
+  fullDay?: string;
   condition: string;
   icon: string;
   high: number;
@@ -295,4 +296,19 @@ export interface LandmarkData {
   landmarks: Landmark[];
   totalCount: number;
   lastUpdated: string;
+}
+
+export interface BusLocation {
+  id: string;
+  vehicleId: string;
+  routeId: string;
+  direction: string;
+  latitude: number;
+  longitude: number;
+  heading: number;
+  speed: number;
+  lastUpdated: string;
+  destination: string;
+  nextStop: string;
+  delay: number;
 }

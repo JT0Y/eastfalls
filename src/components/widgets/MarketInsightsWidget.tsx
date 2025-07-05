@@ -10,9 +10,11 @@ interface MarketInsightsWidgetProps {
   onMoveTop?: () => void;
   onMoveBottom?: () => void;
   onToggleWidth?: () => void;
+  onHide?: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
 }
 
-const MarketInsightsWidget: React.FC<MarketInsightsWidgetProps> = ({ width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth }) => {
+const MarketInsightsWidget: React.FC<MarketInsightsWidgetProps> = ({ width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -80,6 +82,8 @@ const MarketInsightsWidget: React.FC<MarketInsightsWidgetProps> = ({ width = 'ha
         onMoveTop={onMoveTop}
         onMoveBottom={onMoveBottom}
         onToggleWidth={onToggleWidth}
+        onHide={onHide}
+        dragHandleProps={dragHandleProps}
       >
         <div className="animate-pulse p-4 space-y-4">
           <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
@@ -99,6 +103,8 @@ const MarketInsightsWidget: React.FC<MarketInsightsWidgetProps> = ({ width = 'ha
         onMoveTop={onMoveTop}
         onMoveBottom={onMoveBottom}
         onToggleWidth={onToggleWidth}
+        onHide={onHide}
+        dragHandleProps={dragHandleProps}
       >
         <div className="p-4 text-center text-gray-500">
           Unable to load market data
@@ -116,6 +122,8 @@ const MarketInsightsWidget: React.FC<MarketInsightsWidgetProps> = ({ width = 'ha
         onMoveTop={onMoveTop}
         onMoveBottom={onMoveBottom}
         onToggleWidth={onToggleWidth}
+        onHide={onHide}
+        dragHandleProps={dragHandleProps}
       >
         <div className="p-4 text-center text-gray-500">
           S&P 500 data unavailable
@@ -132,6 +140,8 @@ const MarketInsightsWidget: React.FC<MarketInsightsWidgetProps> = ({ width = 'ha
       onMoveTop={onMoveTop}
       onMoveBottom={onMoveBottom}
       onToggleWidth={onToggleWidth}
+      onHide={onHide}
+      dragHandleProps={dragHandleProps}
     >
       <div className="p-4 space-y-6">
         {/* S&P 500 */}

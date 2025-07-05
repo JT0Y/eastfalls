@@ -8,9 +8,11 @@ interface ClockWidgetProps {
   onMoveTop?: () => void;
   onMoveBottom?: () => void;
   onToggleWidth?: () => void;
+  onHide?: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
 }
 
-const ClockWidget: React.FC<ClockWidgetProps> = ({ width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth }) => {
+const ClockWidget: React.FC<ClockWidgetProps> = ({ width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -47,6 +49,8 @@ const ClockWidget: React.FC<ClockWidgetProps> = ({ width = 'half', onRefresh, on
       onMoveTop={onMoveTop}
       onMoveBottom={onMoveBottom}
       onToggleWidth={onToggleWidth}
+      onHide={onHide}
+      dragHandleProps={dragHandleProps}
     >
       <div className="p-4 flex justify-between items-center">
         <div className="flex items-center">

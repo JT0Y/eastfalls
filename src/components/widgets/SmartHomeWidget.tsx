@@ -13,9 +13,10 @@ interface SmartHomeWidgetProps {
   onMoveBottom?: () => void;
   onToggleWidth?: () => void;
   onHide?: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
 }
 
-const SmartHomeWidget: React.FC<SmartHomeWidgetProps> = ({ width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide }) => {
+const SmartHomeWidget: React.FC<SmartHomeWidgetProps> = ({ width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
   const [devices, setDevices] = useState<SmartHomeDevice[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -95,6 +96,7 @@ const SmartHomeWidget: React.FC<SmartHomeWidgetProps> = ({ width = 'half', onRef
       onMoveBottom={onMoveBottom}
       onToggleWidth={onToggleWidth}
       onHide={onHide}
+      dragHandleProps={dragHandleProps}
     >
       <div className="p-4">
         {devices.length === 0 ? (

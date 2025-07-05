@@ -12,9 +12,10 @@ interface SystemInfoWidgetProps {
   onMoveBottom?: () => void;
   onToggleWidth?: () => void;
   onHide?: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
 }
 
-const SystemInfoWidget: React.FC<SystemInfoWidgetProps> = ({ width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide }) => {
+const SystemInfoWidget: React.FC<SystemInfoWidgetProps> = ({ width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -88,6 +89,7 @@ const SystemInfoWidget: React.FC<SystemInfoWidgetProps> = ({ width = 'half', onR
       onMoveBottom={onMoveBottom}
       onToggleWidth={onToggleWidth}
       onHide={onHide}
+      dragHandleProps={dragHandleProps}
     >
       <WidgetCard title="System Information" className="col-span-2 row-span-2">
         <div className="p-4 space-y-4">

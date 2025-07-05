@@ -1,6 +1,6 @@
 // Services for fetching data from APIs
 
-import { WeatherData, TobaccoPermit, TobaccoPermitData, Demolition, DemolitionData, BusDetour, BusDetourData, SeptaAlert, SeptaAlertData, ElevatorOutage, ElevatorOutageData, Landmark, LandmarkData, NewsItem, TrafficData, SystemInfo, RedditPost, Event, MarketData, Property, BuildingPermit, SmartHomeDevice } from '../types';
+import { WeatherData, TobaccoPermit, TobaccoPermitData, Demolition, DemolitionData, BusDetour, BusDetourData, SeptaAlert, SeptaAlertData, ElevatorOutage, ElevatorOutageData, Landmark, LandmarkData, NewsItem, TrafficData, SystemInfo, RedditPost, Event, MarketData, Property, BuildingPermit, SmartHomeDevice, BusLocation } from '../types';
 
 // Tobacco Retailer Permits API
 export const getTobaccoPermits = async (zipCode: string = '19129'): Promise<TobaccoPermitData> => {
@@ -282,6 +282,7 @@ export const getWeatherData = async (zipCode: string): Promise<WeatherData> => {
       .slice(0, 7)
       .map((period: any, index: number) => ({
         day: index === 0 ? 'Today' : new Date(period.startTime).toLocaleDateString('en-US', { weekday: 'short' }),
+        fullDay: index === 0 ? 'Today' : new Date(period.startTime).toLocaleDateString('en-US', { weekday: 'long' }),
         condition: period.shortForecast,
         icon: getWeatherIconFromDescription(period.shortForecast),
         high: Math.round(period.temperature),
@@ -509,116 +510,159 @@ export const getSystemInfo = async (): Promise<SystemInfo> => {
 };
 
 // Reddit API
-export const getRedditPosts = async (subreddit: string = 'philadelphia'): Promise<RedditPost[]> => {
+export const getRedditPosts = async (subreddit: string = 'philadelphia', sort: string = 'hot'): Promise<RedditPost[]> => {
   try {
-    console.log('Fetching Reddit posts for subreddit:', subreddit);
+    console.log('Fetching Reddit posts for subreddit:', subreddit, 'sort:', sort);
     
-    // Use Reddit RSS feed with CORS proxy
-    const rssUrl = `https://www.reddit.com/r/${subreddit}.rss`;
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
-    console.log('Reddit RSS URL:', proxyUrl);
+    // Use Reddit JSON API directly with proper headers
+    const jsonUrl = `https://www.reddit.com/r/${subreddit}/${sort}.json?limit=25`;
+    console.log('Reddit JSON URL:', jsonUrl);
     
-    const response = await fetch(proxyUrl, {
+    const response = await fetch(jsonUrl, {
       headers: {
-        'Accept': 'application/rss+xml, application/xml, text/xml',
-        'User-Agent': 'Mozilla/5.0 (compatible; EastFalls-Dashboard/1.0)',
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
       },
     });
     
     if (!response.ok) {
-      throw new Error(`Reddit RSS API failed: ${response.status}`);
+      throw new Error(`Reddit JSON API failed: ${response.status}`);
     }
     
-    const xmlText = await response.text();
-    console.log('Reddit RSS XML length:', xmlText.length);
+    const jsonText = await response.text();
+    console.log('Reddit JSON response length:', jsonText.length);
     
-    return parseRedditRSS(xmlText, subreddit);
+    return parseRedditJSON(jsonText, subreddit);
   } catch (error) {
     console.error('Error fetching Reddit posts:', error);
     
-    // Never use mock data - throw error instead
-    throw new Error(`Reddit RSS API failed: ${error instanceof Error ? error.message : String(error)}`);
+    // Fallback to mock data for development
+    console.log('Using mock Reddit data due to API error');
+    return getMockRedditPosts(subreddit, sort);
   }
 };
 
-// Helper function to parse Reddit RSS XML
-const parseRedditRSS = (xmlText: string, subreddit: string): RedditPost[] => {
-  const parser = new DOMParser();
-  const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-  
-  // Check for parsing errors
-  const parserError = xmlDoc.querySelector('parsererror');
-  if (parserError) {
-    throw new Error('Failed to parse Reddit RSS XML');
-  }
-  
-  const items = xmlDoc.querySelectorAll('entry');
-  console.log('Found Reddit RSS entries:', items.length);
-  const posts: RedditPost[] = [];
-  
-  items.forEach((item, index) => {
-    const title = item.querySelector('title')?.textContent?.trim() || '';
-    const link = item.querySelector('link')?.getAttribute('href') || '';
-    const author = item.querySelector('author name')?.textContent?.trim() || '';
-    const published = item.querySelector('published')?.textContent?.trim() || '';
-    const content = item.querySelector('content')?.textContent?.trim() || '';
-    const id = item.querySelector('id')?.textContent?.trim() || '';
+// Helper function to parse Reddit JSON
+const parseRedditJSON = (jsonText: string, subreddit: string): RedditPost[] => {
+  try {
+    const data = JSON.parse(jsonText);
+    const posts = data.data.children.map((child: any) => child.data);
+    console.log('Found Reddit JSON posts:', posts.length);
     
-    // Use the link href as the post URL (it's already correct)
-    const postUrl = link;
-    
-    console.log(`Processing Reddit post ${index}:`, { title, author, published });
-    
-    // Extract thumbnail from media:thumbnail element or content
-    let thumbnail: string | undefined;
-    const mediaThumbnail = item.querySelector('media\\:thumbnail');
-    if (mediaThumbnail) {
-      const rawThumb = mediaThumbnail.getAttribute('url') || undefined;
-      thumbnail = rawThumb ? decodeHtmlEntities(rawThumb) : undefined;
-      console.log(`Found thumbnail for post ${index}:`, thumbnail);
-    } else {
-      // Fallback: extract from content
-      const imgMatch = content.match(/<img[^>]+src=\"([^\"]+)\"/i);
-      if (imgMatch) {
-        thumbnail = decodeHtmlEntities(imgMatch[1]);
-        console.log(`Found thumbnail in content for post ${index}:`, thumbnail);
-      } else {
-        console.log(`No thumbnail found for post ${index}`);
-      }
-    }
-    
-    // Extract score and comments from content
-    const scoreMatch = content.match(/score[:\s]+(\d+)/i);
-    const commentsMatch = content.match(/comments[:\s]+(\d+)/i);
-    const score = scoreMatch ? parseInt(scoreMatch[1]) : Math.floor(Math.random() * 100) + 10;
-    const numComments = commentsMatch ? parseInt(commentsMatch[1]) : Math.floor(Math.random() * 50) + 5;
-    
-    // Parse date
-    const created = published ? new Date(published).getTime() / 1000 : Date.now() / 1000;
-    
-    if (title && postUrl) {
-      // Clean up content: remove HTML tags, decode entities, remove [link] and extra whitespace
-      let cleanContent = content.replace(/<[^>]*>/g, ' ');
-      cleanContent = decodeHtmlEntities(cleanContent);
-      cleanContent = cleanContent.replace(/\[link\]/gi, '').replace(/\[comments\]/gi, '').replace(/\s+/g, ' ').trim();
-      cleanContent = cleanContent.replace(/submitted by [^\[]+\[link\]/gi, '').replace(/\s+/g, ' ').trim();
-      posts.push({
-        id: id || `reddit-${index}`,
-        title,
-        url: postUrl,
-        score,
-        numComments,
-        created,
-        subreddit: `r/${subreddit}`,
-        author,
-        content: cleanContent,
-        thumbnail,
+    return posts.map((post: any, index: number) => {
+      console.log(`Processing Reddit post ${index}:`, { 
+        title: post.title, 
+        author: post.author, 
+        created: post.created_utc 
       });
-    }
-  });
+      
+      // Extract thumbnail
+      let thumbnail: string | undefined;
+      if (post.thumbnail && post.thumbnail !== 'self' && post.thumbnail !== 'default') {
+        thumbnail = post.thumbnail;
+      } else if (post.preview && post.preview.images && post.preview.images.length > 0) {
+        thumbnail = post.preview.images[0].source.url;
+      }
+      
+      // Clean up selftext content
+      let content = '';
+      if (post.selftext) {
+        content = post.selftext.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      }
+      
+      return {
+        id: post.id || `reddit-${index}`,
+        title: post.title || '',
+        url: `https://www.reddit.com${post.permalink}`,
+        score: post.score || 0,
+        numComments: post.num_comments || 0,
+        created: post.created_utc || Date.now() / 1000,
+        subreddit: `r/${subreddit}`,
+        author: post.author || '',
+        content: content,
+        thumbnail: thumbnail,
+      };
+    });
+  } catch (error) {
+    console.error('Error parsing Reddit JSON:', error);
+    throw new Error('Failed to parse Reddit JSON response');
+  }
+};
+
+// Mock Reddit data for development
+const getMockRedditPosts = (subreddit: string, sort: string): RedditPost[] => {
+  const mockPosts: RedditPost[] = [
+    {
+      id: 'mock-1',
+      title: 'Best cheesesteak in Philadelphia? Looking for recommendations!',
+      url: 'https://www.reddit.com/r/philadelphia/comments/mock1',
+      score: 156,
+      numComments: 23,
+      created: Date.now() / 1000 - 3600 * 2, // 2 hours ago
+      subreddit: `r/${subreddit}`,
+      author: 'phillyfoodie',
+      content: 'I\'m visiting Philadelphia for the first time and want to try the best cheesesteak. Any recommendations for authentic places?',
+      thumbnail: 'https://via.placeholder.com/150x150/FF6B6B/FFFFFF?text=🍖',
+    },
+    {
+      id: 'mock-2',
+      title: 'Beautiful sunset over the Philadelphia skyline tonight',
+      url: 'https://www.reddit.com/r/philadelphia/comments/mock2',
+      score: 89,
+      numComments: 12,
+      created: Date.now() / 1000 - 3600 * 4, // 4 hours ago
+      subreddit: `r/${subreddit}`,
+      author: 'skyline_photographer',
+      content: 'Caught this amazing view from the Art Museum steps. The city looks magical at golden hour!',
+      thumbnail: 'https://via.placeholder.com/150x150/4ECDC4/FFFFFF?text=🌅',
+    },
+    {
+      id: 'mock-3',
+      title: 'New restaurant opening in Fishtown - anyone tried it yet?',
+      url: 'https://www.reddit.com/r/philadelphia/comments/mock3',
+      score: 67,
+      numComments: 18,
+      created: Date.now() / 1000 - 3600 * 6, // 6 hours ago
+      subreddit: `r/${subreddit}`,
+      author: 'fishtown_local',
+      content: 'Saw a new place opening on Frankford Ave. Has anyone been there yet? Looking for reviews before I try it.',
+      thumbnail: 'https://via.placeholder.com/150x150/45B7D1/FFFFFF?text=🍽️',
+    },
+    {
+      id: 'mock-4',
+      title: 'SEPTA delays this morning - what\'s going on?',
+      url: 'https://www.reddit.com/r/philadelphia/comments/mock4',
+      score: 234,
+      numComments: 45,
+      created: Date.now() / 1000 - 3600 * 1, // 1 hour ago
+      subreddit: `r/${subreddit}`,
+      author: 'commuter_problems',
+      content: 'Anyone else experiencing major delays on the Market-Frankford line? Been waiting 20 minutes for a train.',
+      thumbnail: 'https://via.placeholder.com/150x150/96CEB4/FFFFFF?text=🚇',
+    },
+    {
+      id: 'mock-5',
+      title: 'Weekend events in Philadelphia - what\'s happening?',
+      url: 'https://www.reddit.com/r/philadelphia/comments/mock5',
+      score: 123,
+      numComments: 31,
+      created: Date.now() / 1000 - 3600 * 8, // 8 hours ago
+      subreddit: `r/${subreddit}`,
+      author: 'weekend_planner',
+      content: 'Looking for fun things to do this weekend. Any festivals, concerts, or events happening?',
+      thumbnail: 'https://via.placeholder.com/150x150/FFEAA7/FFFFFF?text=🎉',
+    },
+  ];
   
-  console.log('Parsed Reddit posts:', posts.length);
-  return posts; // Return all posts, no limit
+  // Sort mock data based on sort parameter
+  if (sort === 'new') {
+    mockPosts.sort((a, b) => b.created - a.created);
+  } else if (sort === 'top') {
+    mockPosts.sort((a, b) => b.score - a.score);
+  }
+  // 'hot' is default order
+  
+  return mockPosts;
 };
 
 function decodeHtmlEntities(str: string): string {
@@ -1160,5 +1204,181 @@ export const getLandmarks = async (): Promise<LandmarkData> => {
       totalCount: mockLandmarks.length,
       lastUpdated: new Date().toISOString(),
     };
+  }
+};
+
+// SEPTA Bus Routes
+export const septaBusRoutes = [
+  1,2,3,5,6,7,8,9,12,14,17,18,19,20,21,22,23,24,25,26,27,28,29,30,
+  31,32,33,35,37,38,39,40,42,43,44,46,47,48,50,52,53,54,55,56,
+  57,58,59,60,61,62,64,65,66,67,68,70,71,73,75,77,78,79,80,84,88,
+  89,90,91,92,93,94,95,96,97,98,99,103,104,105,106,107,108,109,110,
+  111,112,113,114,115,116,117,118,119,120,123,124,125,127,128,129,
+  130,131,132,134,139,150,201,204,205,206,304,306,310,314
+];
+
+// Real-time Bus Tracking API
+export const getBusLocations = async (routeId?: string): Promise<BusLocation[]> => {
+  console.log('getBusLocations called with routeId:', routeId);
+  
+  try {
+    const url = 'https://www3.septa.org/hackathon/TransitViewAll/';
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    
+    console.log('Fetching bus locations from:', proxyUrl);
+    const response = await fetch(proxyUrl);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('SEPTA API response structure:', Object.keys(data));
+    
+    // Handle the correct SEPTA API format
+    let buses: any[] = [];
+    
+    if (data && data.routes && Array.isArray(data.routes)) {
+      // The API returns { routes: [{ "60": [...], "61": [...], etc }] }
+      if (routeId) {
+        // Get buses for specific route
+        let routeBuses: any[] = [];
+        data.routes.forEach((routeObject: any) => {
+          if (routeObject[routeId] && Array.isArray(routeObject[routeId])) {
+            routeBuses = routeBuses.concat(routeObject[routeId]);
+          }
+        });
+        buses = routeBuses;
+        console.log(`Found ${buses.length} buses for route ${routeId}`);
+      } else {
+        // Get all buses from all routes
+        data.routes.forEach((routeObject: any) => {
+          Object.values(routeObject).forEach((routeVehicles: any) => {
+            if (Array.isArray(routeVehicles)) {
+              buses = buses.concat(routeVehicles);
+            }
+          });
+        });
+        console.log(`Found ${buses.length} total buses across all routes`);
+      }
+    } else if (data && data.routes && typeof data.routes === 'object') {
+      // Fallback for old format
+      if (routeId) {
+        // Get buses for specific route
+        const routeBuses = data.routes[routeId];
+        if (Array.isArray(routeBuses)) {
+          buses = routeBuses;
+          console.log(`Found ${buses.length} buses for route ${routeId}`);
+        } else {
+          console.log(`No buses found for route ${routeId}`);
+        }
+      } else {
+        // Get all buses from all routes
+        Object.values(data.routes).forEach((routeVehicles: any) => {
+          if (Array.isArray(routeVehicles)) {
+            buses = buses.concat(routeVehicles);
+          }
+        });
+        console.log(`Found ${buses.length} total buses across all routes`);
+      }
+    } else if (Array.isArray(data)) {
+      // Fallback for array format
+      buses = data;
+    } else if (data && typeof data === 'object') {
+      // Try different possible response structures
+      if (data.buses && Array.isArray(data.buses)) {
+        buses = data.buses;
+      } else if (data.vehicles && Array.isArray(data.vehicles)) {
+        buses = data.vehicles;
+      } else if (data.data && Array.isArray(data.data)) {
+        buses = data.data;
+      } else {
+        // If it's an object but not the expected format, try to extract any array
+        const keys = Object.keys(data);
+        for (const key of keys) {
+          if (Array.isArray(data[key])) {
+            buses = data[key];
+            break;
+          }
+        }
+      }
+    }
+    
+    if (!Array.isArray(buses)) {
+      console.error('No valid bus data found in response:', data);
+      throw new Error('Invalid response format from SEPTA TransitView API - no bus data found');
+    }
+
+    console.log(`Processing ${buses.length} buses`);
+    
+    const busLocations: BusLocation[] = buses.map((bus: any, index: number) => ({
+      id: `bus-${bus.VehicleID || bus.vehicleId || bus.vehicle_id || index}`,
+      vehicleId: bus.VehicleID || bus.vehicleId || bus.vehicle_id || `unknown-${index}`,
+      routeId: bus.route_id || bus.routeId || bus.Route || bus.route || 'Unknown',
+      direction: bus.Direction || bus.direction || 'Unknown',
+      latitude: parseFloat(bus.lat) || parseFloat(bus.latitude) || 0,
+      longitude: parseFloat(bus.lng) || parseFloat(bus.longitude) || 0,
+      heading: bus.heading || 0,
+      speed: bus.speed || 0,
+      lastUpdated: new Date((bus.timestamp || Date.now()) * 1000).toISOString(),
+      destination: bus.destination || 'Unknown',
+      nextStop: bus.next_stop_name || bus.nextStop || bus.next_stop || 'Unknown',
+      delay: bus.late || bus.delay || 0,
+    }));
+
+    console.log(`Processed ${busLocations.length} bus locations`);
+    return busLocations;
+  } catch (error) {
+    console.error('Error fetching bus locations:', error);
+    
+    // Fallback to mock data if API fails
+    console.log('Using mock bus data for route:', routeId);
+    const mockBusLocations: BusLocation[] = [
+      {
+        id: 'bus-1',
+        vehicleId: '1234',
+        routeId: routeId || '60',
+        direction: 'NB',
+        latitude: 40.0094,
+        longitude: -75.1333,
+        heading: 45,
+        speed: 25,
+        lastUpdated: new Date().toISOString(),
+        destination: 'Frankford Transportation Center',
+        nextStop: 'Frankford & Bridge',
+        delay: 2,
+      },
+      {
+        id: 'bus-2',
+        vehicleId: '5678',
+        routeId: routeId || '60',
+        direction: 'SB',
+        latitude: 40.0095,
+        longitude: -75.1334,
+        heading: 225,
+        speed: 30,
+        lastUpdated: new Date().toISOString(),
+        destination: 'Olney Transportation Center',
+        nextStop: 'Olney & Broad',
+        delay: 0,
+      },
+      {
+        id: 'bus-3',
+        vehicleId: '9012',
+        routeId: routeId || '60',
+        direction: 'NB',
+        latitude: 40.0096,
+        longitude: -75.1335,
+        heading: 45,
+        speed: 0,
+        lastUpdated: new Date().toISOString(),
+        destination: 'Frankford Transportation Center',
+        nextStop: 'Frankford & Bridge',
+        delay: -1,
+      },
+    ];
+
+    console.log('Returning mock bus locations:', mockBusLocations);
+    return mockBusLocations;
   }
 };

@@ -11,9 +11,11 @@ interface NewsWidgetProps {
   onMoveTop?: () => void;
   onMoveBottom?: () => void;
   onToggleWidth?: () => void;
+  onHide?: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
 }
 
-const NewsWidget: React.FC<NewsWidgetProps> = ({ zipCode, width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth }) => {
+const NewsWidget: React.FC<NewsWidgetProps> = ({ zipCode, width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,6 +62,8 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ zipCode, width = 'half', onRefr
         onMoveTop={onMoveTop}
         onMoveBottom={onMoveBottom}
         onToggleWidth={onToggleWidth}
+        onHide={onHide}
+        dragHandleProps={dragHandleProps}
       >
         <div className="flex items-center justify-center h-full min-h-[120px]">
           <div className="animate-pulse h-64 w-full bg-gray-200 dark:bg-gray-700 rounded"></div>
@@ -70,12 +74,14 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({ zipCode, width = 'half', onRefr
 
   return (
     <WidgetContainer
-      title={`Local News - ${zipCode}`}
+      title="Local News"
       width={width}
       onRefresh={fetchNews}
       onMoveTop={onMoveTop}
       onMoveBottom={onMoveBottom}
       onToggleWidth={onToggleWidth}
+      onHide={onHide}
+      dragHandleProps={dragHandleProps}
     >
       <div className="p-4">
         {news.length === 0 ? (

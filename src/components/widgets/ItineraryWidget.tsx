@@ -74,27 +74,84 @@ const ItineraryWidget: React.FC<ItineraryWidgetProps> = ({
     setIsGenerating(true);
     
     try {
-      // Prepare context data from dashboard state
-      const contextData = {
-        weather: state.weather,
-        events: state.events,
-        news: state.news,
-        reddit: state.reddit.posts,
-        // Add other relevant data as needed
-      };
+      // Prepare focused context data for today's itinerary
+      const today = new Date();
+      const todayString = today.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
 
-      // Build prompt based on toggles
-      let prompt = "You are knowledgeable about the city of Philadelphia. Make an itinerary for someone to do for today.";
+      // Get today's weather (simplified)
+      const weather = state.weather ? {
+        temp: state.weather.temperature,
+        condition: state.weather.condition,
+        wind: state.weather.windSpeed
+      } : null;
+
+      // Get today's events (simplified, only essential fields)
+      const events = state.events?.filter(event => {
+        if (!event.date) return false;
+        const eventDate = new Date(event.date);
+        const diffTime = eventDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 && diffDays <= 7;
+      }).slice(0, 3).map(event => ({
+        title: event.title,
+        date: event.date,
+        location: event.location,
+        category: event.category
+      })) || [];
+
+      // Get recent news (simplified)
+      const news = state.news?.slice(0, 3).map(item => ({
+        title: item.title,
+        source: item.source,
+        publishedAt: item.publishedAt
+      })) || [];
+
+      // Get trending Reddit posts (simplified)
+      const reddit = state.reddit.posts?.slice(0, 3).map(post => ({
+        title: post.title,
+        score: post.score,
+        comments: post.numComments,
+        subreddit: post.subreddit
+      })) || [];
+
+      const contextData = {
+        date: todayString,
+        weather,
+        events,
+        news,
+        reddit,
+        location: "Philadelphia"
+      };
+      
+      console.log("Clean context data for Gemini:", contextData);
+
+      // Build focused prompt based on toggles
+      let prompt = `You are a knowledgeable Philadelphia local guide. Create a detailed, practical itinerary for ${contextData.date} based on the current weather, local events, news, and community discussions.`;
       
       const activeToggles = Object.entries(promptToggles)
         .filter(([_, active]) => active)
         .map(([key, _]) => key);
 
       if (activeToggles.length > 0) {
-        prompt += ` Focus on: ${activeToggles.join(', ')}.`;
+        prompt += `\n\nPREFERENCES: Focus on activities that are ${activeToggles.join(', ')}.`;
       }
 
-      prompt += `\n\nUse this context data: ${JSON.stringify(contextData, null, 2)}`;
+      prompt += `\n\nCURRENT CONDITIONS: ${JSON.stringify(contextData, null, 2)}`;
+      
+      prompt += `\n\nINSTRUCTIONS:
+- Create a realistic, time-based itinerary for today
+- Consider the weather conditions when suggesting activities
+- Include specific events happening today if available
+- Mention relevant news or community discussions
+- Suggest local things for tourists and locals
+- Include both indoor and outdoor options based on weather
+- Make it practical and achievable for a day in Philadelphia
+- Format as a clear timeline with times and locations`;
 
       const requestBody = {
         contents: [{
@@ -109,8 +166,9 @@ const ItineraryWidget: React.FC<ItineraryWidgetProps> = ({
       };
 
       console.log('Sending request to Gemini:', requestBody);
+      console.log('Sending request to Gemini:', prompt);
 
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyDVUQAPgwrUtHuxw9YuqQjA4euOtEI2F6M', {
+      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=AIzaSyDVUQAPgwrUtHuxw9YuqQjA4euOtEI2F6M', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

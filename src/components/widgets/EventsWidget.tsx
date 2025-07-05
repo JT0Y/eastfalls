@@ -3,6 +3,7 @@ import { getLocalEvents } from '../../services/api';
 import { Event } from '../../types';
 import { Calendar, MapPin, Clock, Tag, ExternalLink, Filter } from 'lucide-react';
 import WidgetContainer from '../ui/WidgetContainer';
+import { useDashboardData } from '../../DataContext';
 
 interface EventsWidgetProps {
   zipCode: string;
@@ -16,16 +17,19 @@ interface EventsWidgetProps {
 }
 
 const EventsWidget: React.FC<EventsWidgetProps> = ({ zipCode, width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
-  const [events, setEvents] = useState<Event[]>([]);
+  const { state, dispatch } = useDashboardData();
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<{ id: string; label: string; count: number }[]>([]);
+  
+  // Use events from global state, fallback to local state if empty
+  const events = state.events || [];
 
   const fetchEvents = async () => {
     setLoading(true);
     try {
       const data = await getLocalEvents(zipCode, selectedCategory);
-      setEvents(data);
+      dispatch({ type: 'SET_EVENTS', payload: data });
       
       // Generate categories from all events
       if (selectedCategory === 'all') {

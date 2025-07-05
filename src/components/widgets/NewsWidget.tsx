@@ -3,6 +3,7 @@ import { getNewsData } from '../../services/api';
 import { NewsItem } from '../../types';
 import { Newspaper } from 'lucide-react';
 import WidgetContainer from '../ui/WidgetContainer';
+import { useDashboardData } from '../../DataContext';
 
 interface NewsWidgetProps {
   zipCode: string;
@@ -16,14 +17,17 @@ interface NewsWidgetProps {
 }
 
 const NewsWidget: React.FC<NewsWidgetProps> = ({ zipCode, width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
-  const [news, setNews] = useState<NewsItem[]>([]);
+  const { state, dispatch } = useDashboardData();
   const [loading, setLoading] = useState(true);
+  
+  // Use news from global state, fallback to local state if empty
+  const news = state.news || [];
 
   const fetchNews = async () => {
     try {
       setLoading(true);
       const data = await getNewsData(zipCode);
-      setNews(data);
+      dispatch({ type: 'SET_NEWS', payload: data });
     } catch (error) {
       console.error('Error fetching news data:', error);
     } finally {

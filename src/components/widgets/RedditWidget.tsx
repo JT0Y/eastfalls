@@ -16,6 +16,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import WidgetContainer from '../ui/WidgetContainer';
+import { useDashboardData } from '../../DataContext';
 
 const SUBREDDITS = [
   { id: 'philadelphia', label: 'r/philadelphia' },
@@ -147,6 +148,7 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
   onHide, 
   dragHandleProps 
 }) => {
+  const { state: globalState, dispatch: globalDispatch } = useDashboardData();
   const [state, dispatch] = useReducer(redditReducer, initialState);
 
   // Check if we need to fetch data for a subreddit
@@ -176,6 +178,8 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
       console.log(`Fetching fresh data for r/${subreddit}`);
       const data = await getRedditPosts(subreddit, 'hot'); // Always fetch 'hot' for cache
       dispatch({ type: 'SET_POSTS', payload: { subreddit, posts: data } });
+      // Also update global state
+      globalDispatch({ type: 'SET_REDDIT_POSTS', payload: data });
     } catch (error) {
       console.error('Error fetching Reddit posts:', error);
       dispatch({ 
@@ -213,6 +217,8 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
         try {
           const data = await getRedditPosts(state.activeSubreddit, 'hot');
           dispatch({ type: 'SET_POSTS', payload: { subreddit: state.activeSubreddit, posts: data } });
+          // Also update global state
+          globalDispatch({ type: 'SET_REDDIT_POSTS', payload: data });
         } catch (error) {
           dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to fetch Reddit posts' });
         }
@@ -238,6 +244,8 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
         getRedditPosts(state.activeSubreddit, 'hot')
           .then(data => {
             dispatch({ type: 'SET_POSTS', payload: { subreddit: state.activeSubreddit, posts: data } });
+            // Also update global state
+            globalDispatch({ type: 'SET_REDDIT_POSTS', payload: data });
           })
           .catch(error => {
             dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to fetch Reddit posts' });

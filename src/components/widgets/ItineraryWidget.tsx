@@ -168,7 +168,7 @@ const ItineraryWidget: React.FC<ItineraryWidgetProps> = ({
       console.log('Sending request to Gemini:', requestBody);
       console.log('Sending request to Gemini:', prompt);
 
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=AIzaSyDVUQAPgwrUtHuxw9YuqQjA4euOtEI2F6M', {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyDVUQAPgwrUtHuxw9YuqQjA4euOtEI2F6M'}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

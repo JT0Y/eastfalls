@@ -24,8 +24,6 @@ interface PromptToggles {
   relax: boolean;
 }
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-
 const ItineraryWidget: React.FC<ItineraryWidgetProps> = ({ 
   width = 'half', 
   onRefresh, 
@@ -170,7 +168,10 @@ const ItineraryWidget: React.FC<ItineraryWidgetProps> = ({
       console.log('Sending request to Gemini:', requestBody);
       console.log('Sending request to Gemini:', prompt);
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_API_KEY}`, {
+      if (!import.meta.env.VITE_GEMINI_API_KEY) {
+        throw new Error('Gemini API key is missing. Please set VITE_GEMINI_API_KEY in your environment variables.');
+      }
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

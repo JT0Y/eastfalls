@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useReducer, useContext, createContext } from 'react';
 import WidgetContainer from '../ui/WidgetContainer';
-import { Play, ExternalLink, Loader2, X } from 'lucide-react';
+import { Play, ExternalLink, Loader2, X, Video as VideoIcon } from 'lucide-react';
 
 interface PhillyVideosWidgetProps {
   width?: 'half' | 'full';
@@ -232,6 +232,7 @@ const PhillyVideosWidgetInner: React.FC<PhillyVideosWidgetProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<VideoCategory>('food');
   const [selectedVideo, setSelectedVideo] = useState<YouTubeVideo | null>(null);
   const [showEmbeddedPlayer, setShowEmbeddedPlayer] = useState(false);
+  const [imgError, setImgError] = useState<{ [id: string]: boolean }>({});
 
   // Fetch videos only if not already cached
   useEffect(() => {
@@ -367,16 +368,19 @@ const PhillyVideosWidgetInner: React.FC<PhillyVideosWidgetProps> = ({
                 className="bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors h-20"
               >
                 <div className="flex h-full">
-                  <div className="relative flex-shrink-0">
-                    <img
-                      src={video.thumbnail}
-                      alt={video.title}
-                      className="w-24 h-20 object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'https://via.placeholder.com/96x80/666666/ffffff?text=Video';
-                      }}
-                    />
+                  <div className="relative flex-shrink-0 w-24 h-20">
+                    {!imgError[video.id] ? (
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        className="w-24 h-20 object-cover"
+                        onError={() => setImgError(prev => ({ ...prev, [video.id]: true }))}
+                      />
+                    ) : (
+                      <div className="w-24 h-20 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded">
+                        <VideoIcon className="h-8 w-8 text-gray-400" />
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 p-2 flex flex-col justify-between">
                     <div>

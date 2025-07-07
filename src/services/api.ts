@@ -513,31 +513,24 @@ export const getSystemInfo = async (): Promise<SystemInfo> => {
 export const getRedditPosts = async (subreddit: string = 'philadelphia', sort: string = 'hot'): Promise<RedditPost[]> => {
   try {
     console.log('Fetching Reddit posts for subreddit:', subreddit, 'sort:', sort);
-    
-    // Use Reddit JSON API directly with proper headers
-    const jsonUrl = `https://www.reddit.com/r/${subreddit}/${sort}.json?limit=25`;
-    console.log('Reddit JSON URL:', jsonUrl);
-    
-    const response = await fetch(jsonUrl, {
+    // Use Reddit JSON API via CORS proxy
+    const redditUrl = `https://www.reddit.com/r/${subreddit}/${sort}.json?limit=25`;
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(redditUrl)}`;
+    console.log('Reddit JSON Proxy URL:', proxyUrl);
+    const response = await fetch(proxyUrl, {
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
       },
     });
-    
     if (!response.ok) {
       throw new Error(`Reddit JSON API failed: ${response.status}`);
     }
-    
     const jsonText = await response.text();
-    console.log('Reddit JSON response length:', jsonText.length);
-    
     return parseRedditJSON(jsonText, subreddit);
   } catch (error) {
     console.error('Error fetching Reddit posts:', error);
-    
     // Fallback to mock data for development
-    console.log('Using mock Reddit data due to API error');
     return getMockRedditPosts(subreddit, sort);
   }
 };
@@ -547,29 +540,19 @@ const parseRedditJSON = (jsonText: string, subreddit: string): RedditPost[] => {
   try {
     const data = JSON.parse(jsonText);
     const posts = data.data.children.map((child: any) => child.data);
-    console.log('Found Reddit JSON posts:', posts.length);
-    
     return posts.map((post: any, index: number) => {
-      console.log(`Processing Reddit post ${index}:`, { 
-        title: post.title, 
-        author: post.author, 
-        created: post.created_utc 
-      });
-      
       // Extract thumbnail
-      let thumbnail: string | undefined;
-      if (post.thumbnail && post.thumbnail !== 'self' && post.thumbnail !== 'default') {
-        thumbnail = post.thumbnail;
-      } else if (post.preview && post.preview.images && post.preview.images.length > 0) {
+      let thumbnail: string | undefined = undefined;
+      if (post.preview && post.preview.images && post.preview.images.length > 0) {
         thumbnail = post.preview.images[0].source.url;
+      } else if (post.thumbnail && post.thumbnail.startsWith('http')) {
+        thumbnail = post.thumbnail;
       }
-      
       // Clean up selftext content
       let content = '';
       if (post.selftext) {
         content = post.selftext.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
       }
-      
       return {
         id: post.id || `reddit-${index}`,
         title: post.title || '',

@@ -49,8 +49,8 @@ interface RedditState {
   activeSubreddit: string;
   activeSort: string;
   expandedPosts: Set<string>;
-  cache: Record<string, RedditPost[]>; // Cache by subreddit
-  lastFetched: Record<string, number>; // Track when each subreddit was last fetched
+  cache: Record<string, RedditPost[]>; // Cache by subreddit|sort
+  lastFetched: Record<string, number>; // Track when each subreddit|sort was last fetched
 }
 
 // Action types
@@ -126,7 +126,6 @@ const redditReducer = (state: RedditState, action: RedditAction): RedditState =>
 // Sort functions
 const sortPosts = (posts: RedditPost[], sortType: string): RedditPost[] => {
   const sorted = [...posts];
-  
   switch (sortType) {
     case 'new':
       return sorted.sort((a, b) => b.created - a.created);
@@ -134,7 +133,6 @@ const sortPosts = (posts: RedditPost[], sortType: string): RedditPost[] => {
       return sorted.sort((a, b) => b.score - a.score);
     case 'hot':
     default:
-      // Keep original order for 'hot' (already sorted by Reddit)
       return sorted;
   }
 };
@@ -160,34 +158,27 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
     return !state.cache[subreddit] || cacheAge > fiveMinutes;
   }, [state.cache, state.lastFetched]);
 
-  // Fetch posts for a subreddit
-  const fetchPosts = useCallback(async (subreddit: string) => {
-    // Check cache first
-    if (!needsFetch(subreddit)) {
-      console.log(`Using cached data for r/${subreddit}`);
-      const cachedPosts = state.cache[subreddit];
-      const sortedPosts = sortPosts(cachedPosts, state.activeSort);
-      dispatch({ type: 'SET_POSTS', payload: { subreddit, posts: sortedPosts } });
+  // Fetch posts for a subreddit and sort
+  const fetchPosts = useCallback(async (subreddit: string, sort: string) => {
+    const cacheKey = `${subreddit}|${sort}`;
+    if (!needsFetch(cacheKey)) {
+      const cachedPosts = state.cache[cacheKey];
+      dispatch({ type: 'SET_POSTS', payload: { subreddit: cacheKey, posts: cachedPosts } });
       return;
     }
-
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'CLEAR_ERROR' });
-
     try {
-      console.log(`Fetching fresh data for r/${subreddit}`);
-      const data = await getRedditPosts(subreddit, 'hot'); // Always fetch 'hot' for cache
-      dispatch({ type: 'SET_POSTS', payload: { subreddit, posts: data } });
-      // Also update global state
+      const data = await getRedditPosts(subreddit, sort);
+      dispatch({ type: 'SET_POSTS', payload: { subreddit: cacheKey, posts: data } });
       globalDispatch({ type: 'SET_REDDIT_POSTS', payload: data });
     } catch (error) {
-      console.error('Error fetching Reddit posts:', error);
       dispatch({ 
         type: 'SET_ERROR', 
         payload: error instanceof Error ? error.message : 'Failed to fetch Reddit posts' 
       });
     }
-  }, [needsFetch, state.activeSort]);
+  }, [needsFetch]);
 
   // Handle subreddit change
   const handleSubredditChange = useCallback((subreddit: string) => {
@@ -206,55 +197,18 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
 
   // Effect to fetch data when subreddit or sort changes
   useEffect(() => {
-    const fetch = async () => {
-      const lastFetched = state.lastFetched[state.activeSubreddit];
-      const cacheAge = Date.now() - (lastFetched || 0);
-      const fiveMinutes = 5 * 60 * 1000;
-      const cachedPosts = state.cache[state.activeSubreddit];
-      if (!cachedPosts || cacheAge > fiveMinutes) {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        dispatch({ type: 'CLEAR_ERROR' });
-        try {
-          const data = await getRedditPosts(state.activeSubreddit, 'hot');
-          dispatch({ type: 'SET_POSTS', payload: { subreddit: state.activeSubreddit, posts: data } });
-          // Also update global state
-          globalDispatch({ type: 'SET_REDDIT_POSTS', payload: data });
-        } catch (error) {
-          dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to fetch Reddit posts' });
-        }
-      } else {
-        // Only sort if we have cached posts
-        const sortedPosts = sortPosts(cachedPosts, state.activeSort);
-        dispatch({ type: 'SET_POSTS', payload: { subreddit: state.activeSubreddit, posts: sortedPosts } });
-      }
-    };
-    fetch();
+    const cacheKey = `${state.activeSubreddit}|${state.activeSort}`;
+    const lastFetched = state.lastFetched[cacheKey];
+    const cacheAge = Date.now() - (lastFetched || 0);
+    const fiveMinutes = 5 * 60 * 1000;
+    const cachedPosts = state.cache[cacheKey];
+    if (!cachedPosts || cacheAge > fiveMinutes) {
+      fetchPosts(state.activeSubreddit, state.activeSort);
+    } else {
+      dispatch({ type: 'SET_POSTS', payload: { subreddit: cacheKey, posts: cachedPosts } });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.activeSubreddit, state.activeSort]);
-
-  // Auto-refresh every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const lastFetched = state.lastFetched[state.activeSubreddit];
-      const cacheAge = Date.now() - (lastFetched || 0);
-      const fiveMinutes = 5 * 60 * 1000;
-      if (cacheAge > fiveMinutes) {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        dispatch({ type: 'CLEAR_ERROR' });
-        getRedditPosts(state.activeSubreddit, 'hot')
-          .then(data => {
-            dispatch({ type: 'SET_POSTS', payload: { subreddit: state.activeSubreddit, posts: data } });
-            // Also update global state
-            globalDispatch({ type: 'SET_REDDIT_POSTS', payload: data });
-          })
-          .catch(error => {
-            dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to fetch Reddit posts' });
-          });
-      }
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.activeSubreddit]);
 
   const formatTime = (timestamp: number) => {
     const now = Date.now() / 1000;
@@ -292,12 +246,13 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
 
   // Manual refresh function
   const handleRefresh = useCallback(() => {
-    // Clear cache for current subreddit to force fresh fetch
+    // Clear cache for current subreddit/sort to force fresh fetch
+    const cacheKey = `${state.activeSubreddit}|${state.activeSort}`;
     const newCache = { ...state.cache };
-    delete newCache[state.activeSubreddit];
+    delete newCache[cacheKey];
     dispatch({ type: 'SET_LOADING', payload: true });
-    fetchPosts(state.activeSubreddit);
-  }, [state.activeSubreddit, fetchPosts]);
+    fetchPosts(state.activeSubreddit, state.activeSort);
+  }, [state.activeSubreddit, state.activeSort, fetchPosts]);
 
   if (state.loading) {
     return (
@@ -343,20 +298,23 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
     >
       <div className="p-4">
         {/* Subreddit Tabs */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {SUBREDDITS.map(subreddit => (
-            <button
-              key={subreddit.id}
-              onClick={() => handleSubredditChange(subreddit.id)}
-              className={`px-3 py-1.5 text-sm rounded-full transition-all duration-200 font-medium ${
-                state.activeSubreddit === subreddit.id
-                  ? 'bg-blue-500 text-white shadow-md'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              {subreddit.label}
-            </button>
-          ))}
+        <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide mb-4">
+          <ul className="flex flex-nowrap -mb-px text-sm font-medium text-center text-gray-500 dark:text-gray-400 whitespace-nowrap min-w-full">
+            {SUBREDDITS.map(subreddit => (
+              <li key={subreddit.id} className="me-2">
+                <button
+                  onClick={() => handleSubredditChange(subreddit.id)}
+                  className={`inline-flex items-center justify-center p-4 border-b-2 rounded-t-lg transition-colors whitespace-nowrap ${
+                    state.activeSubreddit === subreddit.id
+                      ? 'text-blue-600 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                      : 'border-transparent hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                  }`}
+                >
+                  {subreddit.label}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* Sort Options */}
@@ -416,9 +374,10 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
                             href={post.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-1"
                           >
                             {post.title}
+                            <ArrowUpRight className="h-4 w-4 inline-block ml-1" />
                           </a>
                         </h3>
                         

@@ -1,129 +1,144 @@
-import React, { useState, useEffect } from 'react';
-import { getNewsData } from '../../services/api';
-import { NewsItem } from '../../types';
-import { Newspaper } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import WidgetContainer from '../ui/WidgetContainer';
-import { useDashboardData } from '../../DataContext';
+import { Loader2, Radio as RadioIcon, ExternalLink, AlertTriangle, Play, Pause } from 'lucide-react';
 
-interface NewsWidgetProps {
-  zipCode: string;
-  width?: 'half' | 'full';
-  onRefresh?: () => void;
-  onMoveTop?: () => void;
-  onMoveBottom?: () => void;
-  onToggleWidth?: () => void;
-  onHide?: () => void;
-  dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
+interface RadioStation {
+  stationuuid: string;
+  name: string;
+  url: string;
+  homepage: string;
+  favicon: string;
+  tags: string;
+  country: string;
+  bitrate: number;
+  codec: string;
+  language: string;
 }
 
-const NewsWidget: React.FC<NewsWidgetProps> = ({ zipCode, width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
-  const { state, dispatch } = useDashboardData();
-  const [loading, setLoading] = useState(true);
-  
-  // Use news from global state, fallback to local state if empty
-  const news = state.news || [];
+const API_URL = 'https://de1.api.radio-browser.info/json/stations/search?name=philadelphia';
 
-  const fetchNews = async () => {
-    try {
-      setLoading(true);
-      const data = await getNewsData(zipCode);
-      dispatch({ type: 'SET_NEWS', payload: data });
-    } catch (error) {
-      console.error('Error fetching news data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+const NewsWidget: React.FC<{ width?: 'half' | 'full'; onRefresh?: () => void; onMoveTop?: () => void; onMoveBottom?: () => void; onToggleWidth?: () => void; onHide?: () => void; dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>; }> = ({ width = 'half', onRefresh, onMoveTop, onMoveBottom, onToggleWidth, onHide, dragHandleProps }) => {
+  const [stations, setStations] = useState<RadioStation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [playing, setPlaying] = useState<string | null>(null);
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  const [imgError, setImgError] = useState<{ [uuid: string]: boolean }>({});
 
   useEffect(() => {
-    fetchNews();
-    // Refresh news data every 30 minutes
-    const interval = setInterval(fetchNews, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [zipCode]);
+    setLoading(true);
+    setError(null);
+    fetch(API_URL)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch radio stations.');
+        return res.json();
+      })
+      .then((data: RadioStation[]) => {
+        setStations(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError('Could not load Philly radio stations. Please try again later.');
+        setLoading(false);
+      });
+    // Cleanup audio on unmount
+    return () => {
+      if (audio) {
+        audio.pause();
+        setAudio(null);
+      }
+    };
+    // eslint-disable-next-line
+  }, []);
 
-  const formatPublishTime = (isoString: string) => {
-    const date = new Date(isoString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) {
-      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-      return `${diffInMinutes} min ago`;
-    } else if (diffInHours < 24) {
-      return `${diffInHours}h ago`;
-    } else {
-      return date.toLocaleDateString();
+  const handlePlay = (station: RadioStation) => {
+    if (audio) {
+      audio.pause();
+      setAudio(null);
     }
+    if (playing === station.stationuuid) {
+      setPlaying(null);
+      return;
+    }
+    const newAudio = new window.Audio(station.url);
+    newAudio.play();
+    setAudio(newAudio);
+    setPlaying(station.stationuuid);
+    newAudio.onended = () => setPlaying(null);
+    newAudio.onerror = () => {
+      setError('Failed to play this station.');
+      setPlaying(null);
+    };
   };
 
-  if (loading) {
-    return (
-      <WidgetContainer
-        title="Local News"
-        width={width}
-        onRefresh={fetchNews}
-        onMoveTop={onMoveTop}
-        onMoveBottom={onMoveBottom}
-        onToggleWidth={onToggleWidth}
-        onHide={onHide}
-        dragHandleProps={dragHandleProps}
-      >
-        <div className="flex items-center justify-center h-full min-h-[120px]">
-          <div className="animate-pulse h-64 w-full bg-gray-200 dark:bg-gray-700 rounded"></div>
-        </div>
-      </WidgetContainer>
-    );
-  }
+  const handleImgError = (uuid: string) => {
+    setImgError(prev => ({ ...prev, [uuid]: true }));
+  };
 
   return (
     <WidgetContainer
-      title="Local News"
+      title="Philly Radio News"
       width={width}
-      onRefresh={fetchNews}
+      onRefresh={onRefresh}
       onMoveTop={onMoveTop}
       onMoveBottom={onMoveBottom}
       onToggleWidth={onToggleWidth}
       onHide={onHide}
       dragHandleProps={dragHandleProps}
     >
-      <div className="p-4">
-        {news.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48">
-            <Newspaper className="h-12 w-12 text-gray-400" />
-            <p className="mt-2 text-gray-500">No news available</p>
+      <div className="space-y-4">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-500" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-8 text-red-600 dark:text-red-400">
+            <AlertTriangle className="h-8 w-8 mb-2" />
+            <span className="text-center text-sm font-medium">{error}</span>
+          </div>
+        ) : stations.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
+            No Philly radio stations found.
           </div>
         ) : (
-          <ul className="space-y-4">
-            {news.map((item) => (
-              <li key={item.id} className="group">
-                <a 
-                  href={item.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block transition duration-200 hover:bg-gray-50 dark:hover:bg-gray-800 -mx-4 p-4 rounded-lg"
-                >
-                  <div className="flex">
-                    {item.imageUrl && (
-                      <div className="flex-shrink-0 h-16 w-16 rounded overflow-hidden mr-4">
-                        <img 
-                          src={item.imageUrl} 
-                          alt={item.title} 
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                    )}
-                    <div className={`${item.imageUrl ? '' : 'w-full'}`}>
-                      <h3 className="font-medium text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
-                        {item.title}
-                      </h3>
-                      <div className="mt-1 flex items-center text-xs text-gray-500">
-                        <span className="font-medium">{item.source}</span>
-                        <span className="mx-1">•</span>
-                        <span>{formatPublishTime(item.publishedAt)}</span>
-                      </div>
-                    </div>
+          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+            {stations.map(station => (
+              <li key={station.stationuuid} className="flex items-center gap-3 py-3">
+                {imgError[station.stationuuid] || !station.favicon ? (
+                  <div className="w-10 h-10 flex items-center justify-center rounded bg-white border border-gray-200 dark:border-gray-700">
+                    <RadioIcon className="h-6 w-6 text-gray-400" />
                   </div>
+                ) : (
+                  <img
+                    src={station.favicon}
+                    alt="station icon"
+                    className="w-10 h-10 rounded bg-white border border-gray-200 dark:border-gray-700 object-contain"
+                    onError={() => handleImgError(station.stationuuid)}
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{station.name}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{station.tags}</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    {station.bitrate}kbps {station.codec.toUpperCase()} {station.language && `• ${station.language}`}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handlePlay(station)}
+                  className={`flex items-center justify-center px-3 py-2 rounded-lg transition-colors text-xs font-medium ${playing === station.stationuuid ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  title={playing === station.stationuuid ? 'Pause' : 'Play'}
+                >
+                  {playing === station.stationuuid ? <Pause className="h-4 w-4 mr-1" /> : <Play className="h-4 w-4 mr-1" />}
+                  {playing === station.stationuuid ? 'Pause' : 'Play'}
+                </button>
+                <a
+                  href={station.homepage}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                  title="Station Homepage"
+                >
+                  <ExternalLink className="h-4 w-4" />
                 </a>
               </li>
             ))}

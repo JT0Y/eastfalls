@@ -19,7 +19,7 @@ import NewsWidget from '../widgets/NewsWidget';
 import TrafficWidget from '../widgets/TrafficWidget';
 import SystemInfoWidget from '../widgets/SystemInfoWidget';
 import RedditWidget from '../widgets/RedditWidget';
-import MarketInsightsWidget from '../widgets/MarketInsightsWidget';
+import PhillyVideosWidget from '../widgets/PhillyVideosWidget';
 import EventsWidget from '../widgets/EventsWidget';
 import SeptaWidget from '../widgets/SeptaWidget';
 import ItineraryWidget from '../widgets/ItineraryWidget';
@@ -36,7 +36,7 @@ const WIDGETS = [
   { key: 'reddit', component: RedditWidget, needsZip: false },
   { key: 'traffic', component: TrafficWidget, needsZip: true },
   { key: 'news', component: NewsWidget, needsZip: true },
-  { key: 'market', component: MarketInsightsWidget, needsZip: false },
+  { key: 'phillyVideos', component: PhillyVideosWidget, needsZip: false },
   { key: 'phillyDataExplorer', component: PhiladelphiaDataExplorerWidget, needsZip: false },
   { key: 'septa', component: SeptaWidget, needsZip: false },
   { key: 'itinerary', component: ItineraryWidget, needsZip: false },
@@ -162,8 +162,8 @@ const Dashboard: React.FC<DashboardProps> = ({ zipCode }) => {
         return <TrafficWidget zipCode={zipCode} {...commonProps} onRefresh={() => {}} />;
       case 'news':
         return <NewsWidget zipCode={zipCode} {...commonProps} onRefresh={() => {}} />;
-      case 'market':
-        return <MarketInsightsWidget {...commonProps} onRefresh={() => {}} />;
+      case 'phillyVideos':
+        return <PhillyVideosWidget {...commonProps} onRefresh={() => {}} />;
       case 'phillyDataExplorer':
         return <PhiladelphiaDataExplorerWidget {...commonProps} onRefresh={() => {}} />;
       case 'septa':

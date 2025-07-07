@@ -4,6 +4,19 @@ import { TobaccoPermit, TobaccoPermitData, Demolition, DemolitionData, Landmark,
 import { MapPin, Calendar, Building2, RotateCw, X, ExternalLink, Truck, AlertTriangle, Landmark as LandmarkIcon } from 'lucide-react';
 import WidgetContainer from '../ui/WidgetContainer';
 
+// Web Mercator to Lat/Lng conversion function
+function webMercatorToLatLng(x: number, y: number) {
+  const R_MAJOR = 6378137.0;
+  const originShift = 2 * Math.PI * R_MAJOR / 2.0;
+
+  const lng = (x / originShift) * 180.0;
+  const lat = (y / originShift) * 180.0;
+
+  const latRad = lat * Math.PI / 180.0;
+  const latitude = 180 / Math.PI * (2 * Math.atan(Math.exp(latRad)) - Math.PI / 2.0);
+  return { lat: latitude, lng: lng };
+}
+
 type DatasetType = 'tobacco' | 'demolitions' | 'landmarks';
 
 interface DatasetOption {
@@ -50,8 +63,6 @@ const PhiladelphiaDataExplorerWidget: React.FC<PhiladelphiaDataExplorerWidgetPro
   const [demolitionData, setDemolitionData] = useState<DemolitionData | null>(null);
   const [landmarkData, setLandmarkData] = useState<LandmarkData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [showModal, setShowModal] = useState(false);
 
   const fetchData = useCallback(async (datasetType: DatasetType) => {
     try {
@@ -81,15 +92,7 @@ const PhiladelphiaDataExplorerWidget: React.FC<PhiladelphiaDataExplorerWidgetPro
     fetchData(selectedDataset);
   }, [fetchData, selectedDataset]);
 
-  const handleItemClick = (item: any) => {
-    setSelectedItem(item);
-    setShowModal(true);
-  };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedItem(null);
-  };
 
   const getCurrentData = () => {
     switch (selectedDataset) {
@@ -123,16 +126,14 @@ const PhiladelphiaDataExplorerWidget: React.FC<PhiladelphiaDataExplorerWidgetPro
       case 'tobacco':
         return (
           <tr>
-            <th className="px-3 py-2 text-left text-xs font-semibold">Business Name</th>
-            <th className="px-3 py-2 text-left text-xs font-semibold">Address</th>
-            <th className="px-3 py-2 text-left text-xs font-semibold">Permit Year</th>
+            <th className="px-3 py-2 text-left text-xs font-semibold">Business</th>
+            <th className="px-3 py-2 text-left text-xs font-semibold">Year</th>
           </tr>
         );
       case 'demolitions':
         return (
           <tr>
             <th className="px-3 py-2 text-left text-xs font-semibold">Address</th>
-            <th className="px-3 py-2 text-left text-xs font-semibold">Reason</th>
             <th className="px-3 py-2 text-left text-xs font-semibold">Date</th>
           </tr>
         );
@@ -141,7 +142,6 @@ const PhiladelphiaDataExplorerWidget: React.FC<PhiladelphiaDataExplorerWidgetPro
           <tr>
             <th className="px-3 py-2 text-left text-xs font-semibold">Name</th>
             <th className="px-3 py-2 text-left text-xs font-semibold">Type</th>
-            <th className="px-3 py-2 text-left text-xs font-semibold">Parent</th>
           </tr>
         );
       default:
@@ -162,38 +162,63 @@ const PhiladelphiaDataExplorerWidget: React.FC<PhiladelphiaDataExplorerWidgetPro
     switch (selectedDataset) {
       case 'tobacco':
         return items.map((item: any) => (
-          <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" onClick={() => handleItemClick(item)}>
-            <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">{item.businessName}</td>
-            <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{item.streetAddress}</td>
-            <td className="px-3 py-2 text-blue-600 dark:text-blue-400">{item.permitYear}</td>
+          <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+            <td className="px-3 py-2">
+              <div className="font-medium text-gray-900 dark:text-gray-100">{item.businessName}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">{item.streetAddress}</div>
+            </td>
+            <td className="px-3 py-2 text-blue-600 dark:text-blue-400 text-sm">{item.permitYear}</td>
           </tr>
         ));
       case 'demolitions':
         return items.map((item: any) => (
-          <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" onClick={() => handleItemClick(item)}>
-            <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">{item.address}</td>
-            <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{item.reason}</td>
-            <td className="px-3 py-2 text-red-600 dark:text-red-400">{item.demolitionDate}</td>
+          <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+            <td className="px-3 py-2">
+              <div className="font-medium text-gray-900 dark:text-gray-100">{item.address}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">{item.reason}</div>
+            </td>
+            <td className="px-3 py-2 text-red-600 dark:text-red-400 text-sm">{item.demolitionDate}</td>
           </tr>
         ));
       case 'landmarks':
         return items.map((item: any) => {
-          const x = item.geometry?.x;
-          const y = item.geometry?.y;
-          const label = encodeURIComponent(item.name || item.NAME || 'Landmark');
-          const url = (x && y)
-            ? `https://www.google.com/maps/search/?api=1&query=${y},${x}&query_place_id=${label}`
-            : undefined;
+          // Try to get coordinates from geometry first, then fallback to lat/lng
+          let coordinates = null;
+          
+          if (item.geometry?.x && item.geometry?.y) {
+            // Convert Web Mercator coordinates to lat/lng
+            coordinates = webMercatorToLatLng(item.geometry.x, item.geometry.y);
+          } else if (item.latitude && item.longitude) {
+            // Use direct lat/lng if available (for mock data)
+            coordinates = { lat: item.latitude, lng: item.longitude };
+          }
+          
           return (
             <tr
               key={item.id}
-              className={`hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer`}
-              onClick={() => { if (url) window.open(url, '_blank'); }}
-              title={url ? 'Open in Google Maps' : ''}
+              className="hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">{item.name || item.NAME}</td>
-              <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{item.subtype || item.TYPE}</td>
-              <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{item.parentName || item.PARENT_NAME}</td>
+              <td className="px-3 py-2">
+                <div className="font-medium text-gray-900 dark:text-gray-100">{item.name || item.NAME}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{item.parentName || item.PARENT_NAME}</div>
+              </td>
+              <td className="px-3 py-2">
+                <div className="text-sm text-gray-600 dark:text-gray-300">{item.subtype || item.TYPE}</div>
+                {coordinates ? (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${coordinates.lat},${coordinates.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-blue-500 hover:text-blue-600 transition-colors text-xs mt-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MapPin className="h-3 w-3" />
+                    Map
+                  </a>
+                ) : (
+                  <span className="text-gray-400 text-xs">No location</span>
+                )}
+              </td>
             </tr>
           );
         });
@@ -232,7 +257,7 @@ const PhiladelphiaDataExplorerWidget: React.FC<PhiladelphiaDataExplorerWidgetPro
           ))}
         </div>
         {/* Table for dataset, scrollable container */}
-        <div className="overflow-auto rounded-lg shadow border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 max-h-72">
+        <div className="overflow-auto rounded-lg shadow border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 max-h-72 scrollbar-hide">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-800">
               {renderTableHeaders()}
@@ -243,6 +268,8 @@ const PhiladelphiaDataExplorerWidget: React.FC<PhiladelphiaDataExplorerWidgetPro
           </table>
         </div>
       </div>
+
+
     </WidgetContainer>
   );
 };

@@ -1135,6 +1135,7 @@ export const getLandmarks = async (): Promise<LandmarkData> => {
         label: attributes.LABEL || 'N',
         latitude: geometry?.y || 0,
         longitude: geometry?.x || 0,
+        geometry: geometry, // Keep original geometry for conversion
       };
     });
 

@@ -124,8 +124,8 @@ function reducer(state: State, action: Action): State {
 
 const EventFinderContext = createContext<
   | {
-      state: State;
-      dispatch: React.Dispatch<Action>;
+  state: State;
+  dispatch: React.Dispatch<Action>;
     }
   | undefined
 >(undefined);

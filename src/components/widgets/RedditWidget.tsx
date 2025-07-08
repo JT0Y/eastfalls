@@ -296,9 +296,7 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
       onHide={onHide}
       dragHandleProps={dragHandleProps}
     >
-      <div className="p-4">
-        {/* Subreddit Tabs */}
-        <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide mb-4">
+       <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide mb-4">
           <ul className="flex flex-nowrap -mb-px text-sm font-medium text-center text-gray-500 dark:text-gray-400 whitespace-nowrap min-w-full">
             {SUBREDDITS.map(subreddit => (
               <li key={subreddit.id} className="me-2">
@@ -316,6 +314,9 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
             ))}
           </ul>
         </div>
+      <div className="p-4 overflow-y-auto pb-6 scrollbar-hide">
+        {/* Subreddit Tabs */}
+       
 
         {/* Sort Options */}
         <div className="flex flex-wrap gap-2 mb-6">
@@ -338,7 +339,7 @@ const RedditWidget: React.FC<RedditWidgetProps> = ({
           })}
         </div>
 
-        <div className="space-y-4 max-h-96 overflow-y-auto overflow-x-hidden">
+        <div className="space-y-4 max-h-96">
           {state.error ? (
             <div className="text-center py-8 text-red-500">
               <p className="font-medium text-lg mb-2">Reddit API Error</p>

@@ -372,21 +372,21 @@ const PhiladelphiaDataExplorerWidget: React.FC<PhiladelphiaDataExplorerWidgetPro
         {/* Dataset Selector */}
         <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide mb-4">
           <ul className="flex flex-nowrap -mb-px text-sm font-medium text-center text-gray-500 dark:text-gray-400 whitespace-nowrap min-w-full">
-            {DATASET_OPTIONS.map(option => (
+          {DATASET_OPTIONS.map(option => (
               <li key={option.value} className="me-2">
-                <button
-                  onClick={() => setSelectedDataset(option.value)}
+            <button
+              onClick={() => setSelectedDataset(option.value)}
                   className={`inline-flex items-center gap-2 justify-center p-4 border-b-2 rounded-t-lg transition-colors whitespace-nowrap ${
-                    selectedDataset === option.value
+                selectedDataset === option.value
                       ? 'text-blue-600 border-blue-600 dark:text-blue-500 dark:border-blue-500'
                       : 'border-transparent hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
-                  }`}
-                >
-                  {option.icon}
-                  {option.label}
-                </button>
+              }`}
+            >
+              {option.icon}
+              {option.label}
+            </button>
               </li>
-            ))}
+          ))}
           </ul>
         </div>
         {/* Table for dataset, scrollable container */}

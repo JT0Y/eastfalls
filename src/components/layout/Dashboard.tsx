@@ -16,13 +16,13 @@ import { CSS } from '@dnd-kit/utilities';
 import WeatherWidget from '../widgets/WeatherWidget';
 import PhiladelphiaDataExplorerWidget from '../widgets/PhiladelphiaDataExplorerWidget';
 import NewsWidget from '../widgets/NewsWidget';
-import TrafficWidget from '../widgets/TrafficWidget';
 import SystemInfoWidget from '../widgets/SystemInfoWidget';
 import RedditWidget from '../widgets/RedditWidget';
 import PhillyVideosWidget from '../widgets/PhillyVideosWidget';
 import EventsWidget from '../widgets/EventsWidget';
 import SeptaWidget from '../widgets/SeptaWidget';
 import ItineraryWidget from '../widgets/ItineraryWidget';
+import EventFinderWidget from '../widgets/EventFinderWidget';
 
 interface DashboardProps {
   zipCode: string;
@@ -32,9 +32,8 @@ interface DashboardProps {
 const WIDGETS = [
   { key: 'weather', component: WeatherWidget, needsZip: true },
   { key: 'system', component: SystemInfoWidget, needsZip: false },
-  { key: 'events', component: EventsWidget, needsZip: true },
+  { key: 'events', component: EventFinderWidget },
   { key: 'reddit', component: RedditWidget, needsZip: false },
-  { key: 'traffic', component: TrafficWidget, needsZip: true },
   { key: 'news', component: NewsWidget, needsZip: true },
   { key: 'phillyVideos', component: PhillyVideosWidget, needsZip: false },
   { key: 'phillyDataExplorer', component: PhiladelphiaDataExplorerWidget, needsZip: false },
@@ -147,7 +146,6 @@ const Dashboard: React.FC<DashboardProps> = ({ zipCode }) => {
       case 'weather':
         return (
           <WeatherWidget
-            zipCode={zipCode}
             {...commonProps}
             onRefresh={() => {}}
           />
@@ -155,13 +153,11 @@ const Dashboard: React.FC<DashboardProps> = ({ zipCode }) => {
       case 'system':
         return <SystemInfoWidget {...commonProps} onRefresh={() => {}} />;
       case 'events':
-        return <EventsWidget zipCode={zipCode} {...commonProps} onRefresh={() => {}} />;
+        return <EventFinderWidget {...commonProps} onRefresh={() => {}} />;
       case 'reddit':
         return <RedditWidget {...commonProps} onRefresh={() => {}} />;
-      case 'traffic':
-        return <TrafficWidget zipCode={zipCode} {...commonProps} onRefresh={() => {}} />;
       case 'news':
-        return <NewsWidget zipCode={zipCode} {...commonProps} onRefresh={() => {}} />;
+        return <NewsWidget {...commonProps} onRefresh={() => {}} />;
       case 'phillyVideos':
         return <PhillyVideosWidget {...commonProps} onRefresh={() => {}} />;
       case 'phillyDataExplorer':

@@ -26,8 +26,8 @@ const SUBREDDITS = [
 ];
 
 const SORT_OPTIONS = [
-  { id: 'hot', label: 'Most Popular', icon: TrendingUp },
-  { id: 'new', label: 'Newest', icon: Calendar },
+  { id: 'hot', label: 'Trending', icon: TrendingUp },
+  { id: 'new', label: 'New', icon: Calendar },
   { id: 'top', label: 'Top Rated', icon: ThumbsUp }
 ];
 

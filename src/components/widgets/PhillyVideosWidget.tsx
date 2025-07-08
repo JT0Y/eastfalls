@@ -22,7 +22,7 @@ interface YouTubeVideo {
   videoId: string;
 }
 
-const YOUTUBE_API_KEY = 'AIzaSyAzo7tVVfpq67_gU3Fc0RXRDEQsIJzxJ3Q';
+const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 const YOUTUBE_API_URL = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=date&q=Philadelphia&maxResults=25&key=${YOUTUBE_API_KEY}`;
 
 const PhillyVideosWidget: React.FC<PhillyVideosWidgetProps> = (props) => {

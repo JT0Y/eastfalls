@@ -130,9 +130,7 @@ const EventFinderContext = createContext<
   | undefined
 >(undefined);
 
-const TICKETMASTER_API = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${
-  import.meta.env.VITE_TICKETMASTER_API_KEY
-}&city=Philadelphia&size=20&page=1`;
+const TICKETMASTER_API_KEY = import.meta.env.VITE_TICKETMASTER_API_KEY;
 
 function EventFinderProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -191,7 +189,7 @@ const EventFinderWidgetInner: React.FC<EventFinderWidgetProps> = (props) => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch("https://app.ticketmaster.com/discovery/v2/events.json?apikey=9eIuR74gbNY1pXueenqFBKGw7qhTk0kc&latlong=40.0170,-75.1884&radius=10&unit=miles&size=100&sort=date,asc")
+    fetch(`https://app.ticketmaster.com/discovery/v2/events.json?apikey=${TICKETMASTER_API_KEY}&latlong=40.0170,-75.1884&radius=10&unit=miles&size=100&sort=date,asc`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch events');
         return res.json();
